@@ -28,8 +28,8 @@
 %
 % [output] = particleswarmoptimization(fun,c1,c2,w)
 
-function [x, pkg] = particleswarmoptimization(fun,nvars,xlb,xub,c1,c2,w,i_max)
-
+function [x, pkg, tend] = particleswarmoptimization(fun,nvars,xlb,xub,c1,c2,w,i_max)
+tstart = cputime;
 % initial particles position and velocity
 x = []; % x is defined as (particle size x nvars)
 v = []; 
@@ -49,6 +49,7 @@ end
 % optimization exit flag 
 % (1 - finished)
 exitFlag = 1;
+converged = 0;
 % k-th iteration timestep
 k = 1;
 % intialize particle personal best
@@ -83,7 +84,7 @@ while exitFlag
         % store previous state
         xPv(i,:) = x(i,:);
         % evalute next state
-        x(i,:) = x(i,:) + v(i,:)
+        x(i,:) = x(i,:) + v(i,:);
         % check bounds of solution
         for n=1:1:nvars
             isInBounds = all( xlb(:,n) < x(i,n) && x(i,n) < xub(:,n) );
@@ -100,16 +101,29 @@ while exitFlag
         objfunPv(i,:) = obj_fun(i,:);
         pkgPv = pkg;
         i_pkgPv = i_pkg;
-    end    
+    end
+    % Optimization status
+    % Show state at every 100 iterations
+    if ~mod(k,10)
+        disp('Iteration:')
+        disp(k)
+        disp(x)        
+    end  
     % checking optimization exit condition
-    if k > 1000
+    % all particles have converged
+    converged = all(all(abs(x-xPv) < 1e-10));
+    % iterations over 1000
+    if k > 1000 || converged
         exitFlag = 0;
         disp('Done.');
-    end   
+    end
     % store previous objective function values
     k = k + 1;
     
 end
-
+% calculate execution time
+tend = cputime - tstart;
+disp('Time [s]:')
+disp(tend)
 end
 
