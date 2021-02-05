@@ -23,24 +23,47 @@
 % g - inequality function 
 % h - equality function
 % i_max - particle size
+% rho - penalty parameter
+%
+%
+% How to implement:
+%
+% fun = @(x) rastr(x); %function to minimize
+% xlb = [-5,-5];    % subject to lower bounds, need to specify row vector
+% for each dimension
+% xub = [5,5]; % subject to upper bound
+% g = @(x) [-5-x(1),-5-x(2),x(1)-5,x(2)-5]; % bounds can also be written as
+% inequalit
+% h = @(x) 0;
+% nvars = 2; % number of variables/dimension
+% c1 = 1.5; % c1 tunning parameter
+% c2 = 3; % c2 tunning parameter
+% w = 0.3; % weight parameter
+% rho = 0.01; % penalty function parameter 
+% i_max = 10; % number of swarm particles
+% [x, pkg, tend] = particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,i_max)
 %
 % PSO function implementation:
 %
 % [output] = particleswarmoptimization(fun,c1,c2,w)
 
-function [x, pkg, tend] = particleswarmoptimization(fun,nvars,xlb,xub,c1,c2,w,i_max)
+function [x, pkg, tend] = particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,i_max)
 tstart = cputime;
 % initial particles position and velocity
 x = []; % x is defined as (particle size x nvars)
-v = []; 
+v = [];
+% initialize objective function for plotting
+objfunplot = [];
 for i=1:1:nvars
     % random distribution between bounds
     x(:,i) = randi([xlb(i),xub(i)],i_max,1);
     v(:,i) = randi([0,1],i_max,1);
 end
+% quadratic penalty function definition
+phi = @(x) sum(max(0,g(x)).^2) + sum(h(x));
 for i=1:1:i_max
     % evaluate the initial objection function values
-    objfunPv(i,:) = fun(x(i,:));
+    objfunPv(i,:) = fun(x(i,:)) + phi(x(i,:));
     % intialize previous objection function values
     pkgPv(i,:) = min(objfunPv(i,:));
     % store previous state
@@ -54,6 +77,8 @@ converged = 0;
 k = 1;
 % intialize particle personal best
 i_pk = 0;
+% intialize penalty parameter
+alpha = 1;
 % optimization loop to minimize objective function
 while exitFlag
     for i=1:1:i_max
@@ -62,8 +87,8 @@ while exitFlag
         r2 = rand(i_max,nvars);
         % loop through all particles
         for j=1:1:i_max
-            % evaluate the objection function values f(xki) of all particles
-            obj_fun(j,:) = fun(x(j,:));
+            % evaluate the objection function values pi(xki) of all particles
+            obj_fun(j,:) = fun(x(j,:)) +  rho*phi(x(i,:));
         end
     
         % evalute particle global best
@@ -101,7 +126,9 @@ while exitFlag
         objfunPv(i,:) = obj_fun(i,:);
         pkgPv = pkg;
         i_pkgPv = i_pkg;
+        rho = alpha*rho;
     end
+    
     % Optimization status
     % Show state at every 100 iterations
     if ~mod(k,10)
@@ -113,11 +140,12 @@ while exitFlag
     % all particles have converged
     converged = all(all(abs(x-xPv) < 1e-10));
     % iterations over 1000
-    if k > 1000 || converged
+    if k > 10000 || converged
         exitFlag = 0;
         disp('Done.');
     end
     % store previous objective function values
+    objfunplot(:,k) = obj_fun;
     k = k + 1;
     
 end
