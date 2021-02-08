@@ -22,46 +22,51 @@
 % xlb < x < xub - solution lower and upper bound constraints 
 % g - inequality function 
 % h - equality function
-% i_max - particle size
+% p_max - max particle size
+% i_max - max iteration count
 % rho - penalty parameter
 %
 %
 % How to implement:
 %
-% fun = @(x) rastr(x); %function to minimize
-% xlb = [-5,-5];    % subject to lower bounds, need to specify row vector
-% for each dimension
-% xub = [5,5]; % subject to upper bound
-% g = @(x) [-5-x(1),-5-x(2),x(1)-5,x(2)-5]; % bounds can also be written as
-% inequalit
-% h = @(x) 0;
+% fun = @(x)x(1)*exp(-norm(x)^2);
+% xlb = [-10,-15];    % subject to lower bounds, need to specify row vector
+% xub = [15,20]; % subject to upper bound
+% g = @(x) [-10-x(1),-15-x(2),x(1)-15,x(2)-20]; % bounds can also be written as
+% h = @(x) 0; % h = 0 equality
 % nvars = 2; % number of variables/dimension
 % c1 = 1.5; % c1 tunning parameter
 % c2 = 3; % c2 tunning parameter
 % w = 0.3; % weight parameter
-% rho = 0.01; % penalty function parameter 
-% i_max = 10; % number of swarm particles
-% [x, pkg, tend] = particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,i_max)
+% rho = 0.01; % penalty function parameter
+% p_max = 10; % number of swarm particles
+% i_max = 10000; % number of max loop iterations
+% [x, pkg, tloop, tend] = ...
+% particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,p_max,i_max)
+
 %
 % PSO function implementation:
 %
-% [output] = particleswarmoptimization(fun,c1,c2,w)
+% [x, pkg, tloop, tend] = ...
+% particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,p_max,i_max)
 
-function [x, pkg, tend] = particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,i_max)
+function [x, pkg, tloop, tend] = ...
+    particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,p_max,i_max)
 tstart = cputime;
 % initial particles position and velocity
 x = []; % x is defined as (particle size x nvars)
 v = [];
-% initialize objective function for plotting
+% initialize objective function and iterations for plotting
 objfunplot = [];
+iteration_count = [];
 for i=1:1:nvars
     % random distribution between bounds
-    x(:,i) = randi([xlb(i),xub(i)],i_max,1);
-    v(:,i) = randi([0,1],i_max,1);
+    x(:,i) = randi([xlb(i),xub(i)],p_max,1);
+    v(:,i) = randi([0,1],p_max,1);
 end
 % quadratic penalty function definition
 phi = @(x) sum(max(0,g(x)).^2) + sum(h(x));
-for i=1:1:i_max
+for i=1:1:p_max
     % evaluate the initial objection function values
     objfunPv(i,:) = fun(x(i,:)) + phi(x(i,:));
     % intialize previous objection function values
@@ -81,12 +86,12 @@ i_pk = 0;
 alpha = 1;
 % optimization loop to minimize objective function
 while exitFlag
-    for i=1:1:i_max
+    for i=1:1:p_max
         % random number generated
-        r1 = rand(i_max,nvars);
-        r2 = rand(i_max,nvars);
+        r1 = rand(p_max,nvars);
+        r2 = rand(p_max,nvars);
         % loop through all particles
-        for j=1:1:i_max
+        for j=1:1:p_max
             % evaluate the objection function values pi(xki) of all particles
             obj_fun(j,:) = fun(x(j,:)) +  rho*phi(x(i,:));
         end
@@ -110,19 +115,8 @@ while exitFlag
         xPv(i,:) = x(i,:);
         % evalute next state
         x(i,:) = x(i,:) + v(i,:);
-        % check bounds of solution
-        for n=1:1:nvars
-            isInBounds = all( xlb(:,n) < x(i,n) && x(i,n) < xub(:,n) );
-            if ~isInBounds
-                d1 = abs(x(i,n) - xlb(:,n));
-                d2 = abs(x(i,n) - xub(:,n));
-                if d1 < d2
-                    x(i,n) = xlb(:,n);
-                elseif d2 < d1
-                    x(i,n) = xub(:,n);
-                end
-            end
-        end
+        
+        % store states
         objfunPv(i,:) = obj_fun(i,:);
         pkgPv = pkg;
         i_pkgPv = i_pkg;
@@ -138,18 +132,32 @@ while exitFlag
     end  
     % checking optimization exit condition
     % all particles have converged
-    converged = all(all(abs(x-xPv) < 1e-10));
+    converged = all(all(abs(x-xPv) < 1e-8)) || ...
+        all(all(abs(obj_fun-objfunPv) < 1e-8));
     % iterations over 1000
-    if k > 10000 || converged
+    if k > i_max || converged
         exitFlag = 0;
         disp('Done.');
     end
     % store previous objective function values
     objfunplot(:,k) = obj_fun;
+    iteration_count(:,k) = k;
     k = k + 1;
     
 end
-% calculate execution time
+% max iterations
+max_iter = k-1;
+%calculate loop execution time
+tloop = cputime - tstart;
+
+% plotting
+plot(iteration_count(:,1:max_iter),mean(objfunplot(:,1:max_iter)));
+title('Objective function vs iterations');
+xlabel('[Iterations]');
+ylabel('[Obj. function value]');
+grid on;
+
+% calculate total execution time
 tend = cputime - tstart;
 disp('Time [s]:')
 disp(tend)
