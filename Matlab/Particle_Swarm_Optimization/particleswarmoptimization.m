@@ -50,7 +50,7 @@
 % [x, pkg, tloop, tend] = ...
 % particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,p_max,i_max)
 
-function [x, pkg, tloop, tend] = ...
+function [x, xbest, pkg, tloop, tend] = ...
     particleswarmoptimization(fun,nvars,g,h,xlb,xub,c1,c2,w,rho,p_max,i_max)
 tstart = cputime;
 % initial particles position and velocity
@@ -59,6 +59,7 @@ v = [];
 % initialize objective function and iterations for plotting
 objfunplot = [];
 iteration_count = [];
+xbest = [];
 for i=1:1:nvars
     % random distribution between bounds
     x(:,i) = randi([xlb(i),xub(i)],p_max,1);
@@ -125,7 +126,7 @@ while exitFlag
     
     % Optimization status
     % Show state at every 100 iterations
-    if ~mod(k,10)
+    if ~mod(k,100)
         disp('Iteration:')
         disp(k)
         disp(x)        
@@ -136,8 +137,9 @@ while exitFlag
         all(all(abs(obj_fun-objfunPv) < 1e-8));
     % iterations over 1000
     if k > i_max || converged
+        xbest = x(i_pkg,:);
         exitFlag = 0;
-        disp('Done.');
+        disp('Done.');        
     end
     % store previous objective function values
     objfunplot(:,k) = obj_fun;
@@ -151,6 +153,7 @@ max_iter = k-1;
 tloop = cputime - tstart;
 
 % plotting
+figure();
 plot(iteration_count(:,1:max_iter),mean(objfunplot(:,1:max_iter)));
 title('Objective function vs iterations');
 xlabel('[Iterations]');
