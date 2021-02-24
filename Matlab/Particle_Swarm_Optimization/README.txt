@@ -1,4 +1,3 @@
-READ ME:
 Particle Swarm Optimization Matlab Implementation:
 
 Inputs:
