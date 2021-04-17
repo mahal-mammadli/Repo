@@ -1,0 +1,2 @@
+1. run('MASTERinit.m')
+2. sim('TST_RWSWV2.mdl')
